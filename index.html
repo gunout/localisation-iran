@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTÈME DE GÉOLOCALISATION TACTIQUE - IRAN</title>
+    
+    <!-- Leaflet CSS (Carte) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    
+    <!-- Police Google Fonts (Tech/Mono) -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-blue-dim: rgba(0, 243, 255, 0.2);
+            --alert-red: #ff2a2a;
+            --alert-orange: #ff9d00;
+            --bg-dark: #050a14;
+            --panel-bg: rgba(10, 20, 40, 0.85);
+            --border-color: #00f3ff;
+            --text-main: #e0f0ff;
+            --font-hud: 'Share Tech Mono', monospace;
+            --font-title: 'Orbitron', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            scrollbar-width: thin;
+            scrollbar-color: var(--neon-blue) var(--bg-dark);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: var(--font-hud);
+            height: 100vh;
+            overflow: hidden;
+            background-image: 
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        /* Scanlines Effect */
+        body::after {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 1000;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        /* HEADER */
+        header {
+            height: 60px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            border-bottom: 2px solid var(--neon-blue);
+            background: rgba(0, 20, 40, 0.9);
+            box-shadow: 0 0 15px var(--neon-blue-dim);
+            z-index: 1001;
+            position: relative;
+        }
+
+        h1 {
+            font-family: var(--font-title);
+            color: var(--neon-blue);
+            font-size: 1.5rem;
+            margin: 0;
+            text-shadow: 0 0 10px var(--neon-blue);
+            letter-spacing: 2px;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9rem;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: #88aadd;
+        }
+
+        .stat-value {
+            color: var(--neon-blue);
+            font-weight: bold;
+        }
+
+        /* MAIN LAYOUT */
+        .main-container {
+            display: grid;
+            grid-template-columns: 350px 1fr 350px;
+            height: calc(100vh - 60px);
+            position: relative;
+        }
+
+        /* SIDEBARS */
+        .sidebar {
+            background: var(--panel-bg);
+            border-right: 1px solid var(--neon-blue);
+            display: flex;
+            flex-direction: column;
+            backdrop-filter: blur(5px);
+            z-index: 900;
+        }
+
+        .sidebar-right {
+            border-right: none;
+            border-left: 1px solid var(--neon-blue);
+        }
+
+        .panel-header {
+            padding: 15px;
+            background: rgba(0, 243, 255, 0.1);
+            border-bottom: 1px solid var(--neon-blue);
+            font-family: var(--font-title);
+            font-weight: 700;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        /* FILTERS */
+        .filter-group {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid rgba(0, 243, 255, 0.3);
+        }
+
+        .filter-btn {
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 5px 10px;
+            cursor: pointer;
+            font-family: var(--font-hud);
+            margin-right: 5px;
+            margin-bottom: 5px;
+            transition: all 0.3s;
+            font-size: 0.8rem;
+        }
+
+        .filter-btn:hover, .filter-btn.active {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        /* SITE LIST ITEMS */
+        .site-item {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #334455;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .site-item:hover {
+            border-color: var(--neon-blue);
+            background: rgba(0, 243, 255, 0.1);
+        }
+
+        .site-item.active {
+            border-color: var(--alert-red);
+            background: rgba(255, 42, 42, 0.1);
+            box-shadow: inset 2px 0 0 var(--alert-red);
+        }
+
+        .site-name {
+            font-weight: bold;
+            color: var(--text-main);
+            display: block;
+        }
+
+        .site-coords {
+            font-size: 0.7rem;
+            color: #88aadd;
+            margin-top: 4px;
+            display: block;
+        }
+
+        .status-dot {
+            height: 8px;
+            width: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        /* MAP CONTAINER */
+        #map {
+            width: 100%;
+            height: 100%;
+            background: #020408;
+        }
+
+        /* INTEL PANEL */
+        .intel-info h3 {
+            color: var(--neon-blue);
+            margin-top: 0;
+            border-bottom: 1px solid #334455;
+            padding-bottom: 5px;
+        }
+
+        .data-row {
+            display: flex;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+
+        .data-label {
+            width: 100px;
+            color: #88aadd;
+            flex-shrink: 0;
+        }
+
+        .data-value {
+            color: #fff;
+            flex: 1;
+        }
+
+        .alert-box {
+            border: 1px solid var(--alert-red);
+            background: rgba(255, 42, 42, 0.1);
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+        }
+        
+        .alert-title {
+            color: var(--alert-red);
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        /* LEAFLET CUSTOM STYLES */
+        .custom-div-icon {
+            background: transparent;
+            border: none;
+        }
+        
+        .marker-pin {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--neon-blue);
+            border: 2px solid #fff;
+            box-shadow: 0 0 10px var(--neon-blue);
+            position: relative;
+            animation: pulse-marker 2s infinite;
+        }
+
+        .marker-pin.nuclear {
+            background: var(--alert-red);
+            box-shadow: 0 0 10px var(--alert-red);
+        }
+        
+        .marker-pin.military {
+            background: var(--alert-orange);
+            box-shadow: 0 0 10px var(--alert-orange);
+        }
+
+        .marker-pulse {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--neon-blue);
+            border-radius: 50%;
+            opacity: 0;
+            animation: ripple 2s infinite;
+        }
+
+        /* ANIMATIONS */
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes pulse-marker {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes ripple {
+            0% { width: 0; height: 0; opacity: 1; }
+            100% { width: 60px; height: 60px; opacity: 0; }
+        }
+
+        /* TIMELINE */
+        .timeline-item {
+            border-left: 2px solid #334455;
+            padding-left: 15px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .timeline-item::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--neon-blue);
+            position: absolute;
+            left: -5px;
+            top: 5px;
+            border-radius: 50%;
+        }
+
+        .timeline-date {
+            font-size: 0.75rem;
+            color: var(--neon-blue);
+        }
+
+        .timeline-desc {
+            font-size: 0.85rem;
+            margin-top: 2px;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 250px 1fr 250px;
+            }
+        }
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 50vh auto;
+                overflow-y: auto;
+                height: auto;
+            }
+            .sidebar { height: 400px; }
+            #map { height: 50vh; }
+            body { overflow: auto; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--neon-blue)" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+        </svg>
+        <h1>GEO-LOC IRAN // TACTICAL</h1>
+    </div>
+    
+    <div class="header-stats">
+        <div class="stat-item">
+            <span class="stat-label">STATUS SYSTÈME</span>
+            <span class="stat-value">EN LIGNE</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">DERNIÈRE MÀJ</span>
+            <span class="stat-value" id="current-time">2026-02-28</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">MENACE</span>
+            <span class="stat-value" style="color: var(--alert-red);">ÉLEVÉE</span>
+        </div>
+    </div>
+</header>
+
+<div class="main-container">
+    <!-- LEFT PANEL: SITE LIST -->
+    <aside class="sidebar">
+        <div class="panel-header">
+            <span>CIBLES</span>
+            <span id="site-count" style="color: var(--neon-blue);">0</span>
+        </div>
+        
+        <div class="panel-content">
+            <div class="filter-group">
+                <div style="margin-bottom:5px; font-size:0.8rem; color:#88aadd;">FILTRE:</div>
+                <button class="filter-btn active" onclick="filterSites('all')">TOUS</button>
+                <button class="filter-btn" onclick="filterSites('Nucléaire')">NUCLÉAIRE</button>
+                <button class="filter-btn" onclick="filterSites('Militaire')">MILITAIRE</button>
+                <div style="margin-top: 5px;">
+                    <input type="text" id="search-input" placeholder="RECHERCHE..." style="width: 100%; background: #000; border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 5px; font-family: var(--font-hud);">
+                </div>
+            </div>
+            <div id="site-list-container">
+                <!-- Items injected by JS -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- CENTER: MAP -->
+    <main id="map"></main>
+
+    <!-- RIGHT PANEL: INTEL -->
+    <aside class="sidebar sidebar-right">
+        <div class="panel-header">
+            <span>RENSEIGNEMENTS</span>
+            <span style="font-size:0.8rem;">LIVE</span>
+        </div>
+        
+        <div class="panel-content intel-info" id="intel-panel">
+            <div style="text-align: center; padding-top: 50px; color: #556677;">
+                [SÉLECTIONNER UNE CIBLE]<br>
+                POUR DÉTAILS
+            </div>
+        </div>
+
+        <div class="panel-header" style="border-top: 1px solid var(--neon-blue);">
+            <span>CHRONOLOGIE</span>
+        </div>
+        <div class="panel-content" style="max-height: 30vh;" id="timeline-container">
+            <!-- Timeline items injected by JS -->
+        </div>
+    </aside>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script>
+    // --- DONNÉES (Source exacte du script Python) ---
+    const NUCLEAR_SITES = [
+        { nom: "Natanz - Enrichissement", lat: 33.7225, lon: 51.7250, type: "Nucléaire", statut: "Endommagé", desc: "Principal site d'enrichissement. Usine pilote détruite. Installations souterraines probablement endommagées.", source: "AIEA/ISIS", date: "2026-02-15" },
+        { nom: "Pickaxe Mountain", lat: 33.7060, lon: 51.7380, type: "Nucléaire", statut: "Construction", desc: "Nouveau site souterrain à 1.6 km de Natanz. Tunnels profonds (79-100m). Renforcement des entrées en cours.", source: "ISIS/ABC", date: "2026-02-20" },
+        { nom: "Fordow (Qom)", lat: 34.8850, lon: 50.9950, type: "Nucléaire", statut: "Endommagé", desc: "Installation fortifiée sous montagne. Entrée scellée après frappes. 60% d'enrichissement avant guerre.", source: "AIEA/Reuters", date: "2026-01-20" },
+        { nom: "Isfahan - Complexe", lat: 32.6500, lon: 51.6800, type: "Nucléaire", statut: "Endommagé", desc: "Production de gaz UF6. Stockage souterrain d'uranium enrichi. Trois entrées de tunnels complètement rebouchées.", source: "ISIS/AP", date: "2026-02-10" },
+        { nom: "Parchin (Taleghan 2)", lat: 35.5200, lon: 51.7700, type: "Nucléaire", statut: "Dissimulé", desc: "Installation complètement recouverte de béton et terre. Cylindre de 36m x 12m (conteneur d'explosifs?).", source: "ISIS/Reuters", date: "2026-02-16" },
+        { nom: "Arak - Réacteur IR-40", lat: 34.3700, lon: 49.2400, type: "Nucléaire", statut: "Limité", desc: "Réacteur de recherche reconverti. Production limitée depuis frappes.", source: "AIEA", date: "2026-01-15" },
+        { nom: "Bushehr - Centrale", lat: 28.8300, lon: 50.8900, type: "Nucléaire", statut: "Opérationnel", desc: "Centrale VVER-1000. Production électrique. Non visé par frappes.", source: "AIEA", date: "2026-02-01" }
+    ];
+
+    const MILITARY_SITES = [
+        { nom: "Téhéran - QG Tharallah", lat: 35.7120, lon: 51.4220, type: "Militaire", statut: "Actif", desc: "Quartier général des Gardiens de la Révolution. Centre de commandement des opérations.", source: "UANI", date: "2026-01-12" },
+        { nom: "Téhéran - Quds Sub-HQ", lat: 35.8100, lon: 51.4500, type: "Militaire", statut: "Actif", desc: "Sous-quartier général Nord et Nord-Ouest de Téhéran.", source: "UANI", date: "2026-01-12" },
+        { nom: "Téhéran - Fath Sub-HQ", lat: 35.6200, lon: 51.3200, type: "Militaire", statut: "Actif", desc: "Sous-quartier général Sud-Ouest de Téhéran.", source: "UANI", date: "2026-01-12" },
+        { nom: "Téhéran - Nasr Sub-HQ", lat: 35.7800, lon: 51.5200, type: "Militaire", statut: "Actif", desc: "Sous-quartier général Nord-Est de Téhéran.", source: "UANI", date: "2026-01-12" },
+        { nom: "Base Missile Shiraz", lat: 29.6100, lon: 52.5300, type: "Militaire", statut: "Reconstruction", desc: "Base de lancement de missiles endommagée en 2025. Reconstruction en cours.", source: "Alma/Reuters", date: "2026-01-30" },
+        { nom: "Base Missile Qom", lat: 34.9200, lon: 50.8800, type: "Militaire", statut: "Réparé", desc: "Base à 40km nord de Qom. Toit endommagé en juillet 2025, réparé en novembre 2025.", source: "Alma/Reuters", date: "2026-02-01" },
+        { nom: "Base Missile Tabriz", lat: 38.0800, lon: 46.2800, type: "Militaire", statut: "Réparé", desc: "Base dans le nord-ouest. Entièrement réparée depuis frappes juin 2025.", source: "Sky News", date: "2026-01-15" },
+        { nom: "Bandar Abbas - Navale", lat: 27.1800, lon: 56.2700, type: "Militaire", statut: "Actif", desc: "Principale base navale. Porte-drones IRIS Shahid Bagheri stationné.", source: "Sky News", date: "2026-01-16" },
+        { nom: "Larak Island - Navale", lat: 26.8600, lon: 56.3600, type: "Militaire", statut: "Actif", desc: "Base stratégique pour contrôle détroit d'Ormuz. Exercices conjoints Russie janvier 2026.", source: "Sky News", date: "2026-01-19" }
+    ];
+
+    const TIMELINE_EVENTS = [
+        { date: "2025-06-15", event: "Frappes US/Israël sur sites nucléaires (12 jours)", type: "attaque" },
+        { date: "2025-07-01", event: "Iran suspend coopération AIEA", type: "diplomatie" },
+        { date: "2025-11-14", event: "Nouvelle construction visible à Parchin (Taleghan 2)", type: "construction" },
+        { date: "2026-01-22", event: "Construction 'sarcophage béton' à Parchin", type: "construction" },
+        { date: "2026-02-09", event: "Trois entrées tunnels Isfahan rebouchées", type: "fortification" },
+        { date: "2026-02-16", event: "Site Parchin complètement dissimulé", type: "dissimulation" },
+        { date: "2026-02-27", event: "Nouveau rapport AIEA - Stock 60% non vérifiable", type: "rapport" },
+        { date: "2026-02-28", event: "Nouvelles frappes signalées (non confirmées)", type: "attaque" }
+    ];
+
+    // Fusion des données
+    let allSites = [...NUCLEAR_SITES, ...MILITARY_SITES];
+    let map;
+    let markers = {};
+    let activeFilter = 'all';
+
+    // --- INITIALISATION ---
+    document.addEventListener('DOMContentLoaded', () => {
+        initMap();
+        renderSiteList(allSites);
+        renderTimeline();
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // Search listener
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = allSites.filter(s => s.nom.toLowerCase().includes(term));
+            renderSiteList(filtered);
+        });
+    });
+
+    function updateTime() {
+        const now = new Date();
+        const str = now.toISOString().split('T')[0] + ' ' + now.toTimeString().split(' ')[0];
+        document.getElementById('current-time').innerText = str;
+    }
+
+    // --- CARTE ---
+    function initMap() {
+        // CartoDB Dark Matter tiles pour le look futuriste
+        map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false
+        }).setView([33.5, 52.5], 6);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        // Déplacer les contrôles de zoom en haut à droite
+        L.control.zoom({
+            position: 'topright'
+        }).addTo(map);
+
+        addMarkers(allSites);
+    }
+
+    function getIconClass(type) {
+        if (type === 'Nucléaire') return 'nuclear';
+        if (type === 'Militaire') return 'military';
+        return '';
+    }
+
+    function addMarkers(sites) {
+        // Nettoyer les marqueurs existants
+        for (let id in markers) {
+            map.removeLayer(markers[id]);
+        }
+        markers = {};
+
+        sites.forEach(site => {
+            const colorClass = getIconClass(site.type);
+            
+            // Créer une icône personnalisée
+            const customIcon = L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div class="marker-pin ${colorClass}"><div class="marker-pulse"></div></div>`,
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+
+            const marker = L.marker([site.lat, site.lon], { icon: customIcon }).addTo(map);
+            
+            // Interaction au clic
+            marker.on('click', () => {
+                selectSite(site.nom);
+            });
+
+            markers[site.nom] = marker;
+        });
+    }
+
+    // --- LISTE & FILTRES ---
+    function renderSiteList(sites) {
+        const container = document.getElementById('site-list-container');
+        container.innerHTML = '';
+        document.getElementById('site-count').innerText = sites.length;
+
+        if(sites.length === 0) {
+            container.innerHTML = '<div style="padding:10px; color:#666;">AUCUNE CIBLE TROUVÉE</div>';
+            return;
+        }
+
+        sites.forEach(site => {
+            const div = document.createElement('div');
+            div.className = 'site-item';
+            div.id = `item-${site.nom.replace(/\s+/g, '-')}`;
+            
+            // Couleur du point de statut
+            let statusColor = '#00f3ff';
+            if(site.statut === 'Endommagé' || site.statut === 'Dissimulé') statusColor = '#ff2a2a';
+            if(site.statut === 'Construction' || site.statut === 'Reconstruction') statusColor = '#ff9d00';
+
+            div.innerHTML = `
+                <span class="site-name">
+                    <span class="status-dot" style="background-color: ${statusColor}; box-shadow: 0 0 5px ${statusColor}"></span>
+                    ${site.nom}
+                </span>
+                <span class="site-coords">${site.lat.toFixed(4)}°N, ${site.lon.toFixed(4)}°E</span>
+            `;
+
+            div.addEventListener('click', () => selectSite(site.nom));
+            container.appendChild(div);
+        });
+    }
+
+    function filterSites(type) {
+        activeFilter = type;
+        
+        // UI Buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        event.target.classList.add('active');
+
+        let filtered = allSites;
+        if (type !== 'all') {
+            filtered = allSites.filter(s => s.type === type);
+        }
+        
+        // Appliquer aussi le filtre de recherche si actif
+        const searchTerm = document.getElementById('search-input').value.toLowerCase();
+        if(searchTerm) {
+            filtered = filtered.filter(s => s.nom.toLowerCase().includes(searchTerm));
+        }
+
+        renderSiteList(filtered);
+        addMarkers(filtered);
+    }
+
+    // --- SÉLECTION & INTEL ---
+    function selectSite(siteName) {
+        const site = allSites.find(s => s.nom === siteName);
+        if (!site) return;
+
+        // Mettre en surbrillance dans la liste
+        document.querySelectorAll('.site-item').forEach(el => el.classList.remove('active'));
+        const item = document.getElementById(`item-${siteName.replace(/\s+/g, '-')}`);
+        if(item) item.classList.add('active');
+
+        // Centrer la carte
+        map.flyTo([site.lat, site.lon], 10, {
+            animate: true,
+            duration: 1.5
+        });
+
+        // Mettre à jour le panneau Intel
+        const intelPanel = document.getElementById('intel-panel');
+        
+        let alertHTML = '';
+        if (site.statut === 'Endommagé' || site.statut === 'Dissimulé') {
+            alertHTML = `
+                <div class="alert-box">
+                    <span class="alert-title">⚠ ATTENTION CRITIQUE</span>
+                    Activité suspecte ou site dégradé confirmé par imagerie satellite.
+                </div>
+            `;
+        }
+
+        intelPanel.innerHTML = `
+            <h3>${site.nom}</h3>
+            
+            <div class="data-row">
+                <span class="data-label">TYPE:</span>
+                <span class="data-value" style="color:var(--neon-blue)">${site.type.toUpperCase()}</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">STATUT:</span>
+                <span class="data-value" style="color:${site.statut === 'Actif' ? '#00f3ff' : '#ff9d00'}">${site.statut.toUpperCase()}</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">LATITUDE:</span>
+                <span class="data-value">${site.lat.toFixed(6)}°</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">LONGITUDE:</span>
+                <span class="data-value">${site.lon.toFixed(6)}°</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">SOURCE:</span>
+                <span class="data-value">${site.source}</span>
+            </div>
+            <div class="data-row">
+                <span class="data-label">DER. OBS:</span>
+                <span class="data-value">${site.date}</span>
+            </div>
+
+            <div style="margin-top:15px; border-top:1px solid #334455; padding-top:10px;">
+                <span class="data-label">ANALYSE:</span>
+                <p style="font-size:0.85rem; color:#ddd; margin-top:5px; line-height:1.4;">
+                    ${site.desc}
+                </p>
+            </div>
+
+            ${alertHTML}
+        `;
+    }
+
+    // --- TIMELINE ---
+    function renderTimeline() {
+        const container = document.getElementById('timeline-container');
+        TIMELINE_EVENTS.forEach(ev => {
+            const div = document.createElement('div');
+            div.className = 'timeline-item';
+            
+            let color = '#00f3ff';
+            if(ev.type === 'attaque') color = '#ff2a2a';
+            if(ev.type === 'construction') color = '#ff9d00';
+
+            div.innerHTML = `
+                <div class="timeline-date" style="color:${color}">${ev.date}</div>
+                <div class="timeline-desc">${ev.event}</div>
+            `;
+            container.appendChild(div);
+        });
+    }
+</script>
+
+</body>
+</html>
