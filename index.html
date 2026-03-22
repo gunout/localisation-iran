@@ -17,6 +17,7 @@
             --neon-blue-dim: rgba(0, 243, 255, 0.2);
             --alert-red: #ff2a2a;
             --alert-orange: #ff9d00;
+            --alert-green: #00ff88;
             --bg-dark: #050a14;
             --panel-bg: rgba(10, 20, 40, 0.85);
             --border-color: #00f3ff;
@@ -264,6 +265,21 @@
             animation: pulse 2s infinite;
         }
 
+        .info-box {
+            border: 1px solid var(--alert-green);
+            background: rgba(0, 255, 136, 0.1);
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 0.85rem;
+        }
+        
+        .info-title {
+            color: var(--alert-green);
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
         /* LEAFLET CUSTOM STYLES */
         .custom-div-icon {
             background: transparent;
@@ -289,6 +305,11 @@
         .marker-pin.military {
             background: var(--alert-orange);
             box-shadow: 0 0 10px var(--alert-orange);
+        }
+
+        .marker-pin.powerplant {
+            background: var(--alert-green);
+            box-shadow: 0 0 10px var(--alert-green);
         }
 
         .marker-pulse {
@@ -402,7 +423,7 @@
     <!-- LEFT PANEL: SITE LIST -->
     <aside class="sidebar">
         <div class="panel-header">
-            <span>CIBLES</span>
+            <span>CIBLES & INFRASTRUCTURES</span>
             <span id="site-count" style="color: var(--neon-blue);">0</span>
         </div>
         
@@ -412,6 +433,7 @@
                 <button class="filter-btn active" onclick="filterSites('all')">TOUS</button>
                 <button class="filter-btn" onclick="filterSites('Nucléaire')">NUCLÉAIRE</button>
                 <button class="filter-btn" onclick="filterSites('Militaire')">MILITAIRE</button>
+                <button class="filter-btn" onclick="filterSites('Électrique')">ÉLECTRIQUE</button>
                 <div style="margin-top: 5px;">
                     <input type="text" id="search-input" placeholder="RECHERCHE..." style="width: 100%; background: #000; border: 1px solid var(--neon-blue); color: var(--neon-blue); padding: 5px; font-family: var(--font-hud);">
                 </div>
@@ -475,6 +497,18 @@
         { nom: "Larak Island - Navale", lat: 26.8600, lon: 56.3600, type: "Militaire", statut: "Actif", desc: "Base stratégique pour contrôle détroit d'Ormuz. Exercices conjoints Russie janvier 2026.", source: "Sky News", date: "2026-01-19" }
     ];
 
+    // --- NOUVELLES DONNÉES: CENTRALES ÉLECTRIQUES ---
+    const POWER_PLANTS = [
+        { nom: "Centrale Thermique de Shahid Rajaee (Qazvin)", lat: 36.2450, lon: 49.9800, type: "Électrique", statut: "Opérationnel", desc: "Centrale thermique au gaz d'une capacité de 1000 MW. Alimentation électrique critique pour la région nord.", source: "Tavanir/MEO", date: "2026-02-15", puissance: "1000 MW" },
+        { nom: "Centrale Thermique de Ramin (Ahvaz)", lat: 31.3200, lon: 48.6900, type: "Électrique", statut: "Opérationnel", desc: "Centrale thermique au fioul et gaz naturel. Capacité de 1050 MW. Vulnérabilité aux perturbations.", source: "Tavanir", date: "2026-02-10", puissance: "1050 MW" },
+        { nom: "Centrale Thermique de Shahid Montazeri (Ispahan)", lat: 32.4800, lon: 51.6500, type: "Électrique", statut: "Opérationnel", desc: "Centrale à cycle combiné de 1500 MW. Infrastructure stratégique pour la région centrale.", source: "MEO", date: "2026-02-18", puissance: "1500 MW" },
+        { nom: "Centrale Thermique de Tabriz", lat: 37.9900, lon: 46.2500, type: "Électrique", statut: "Opérationnel", desc: "Centrale thermique de 1500 MW. Approvisionnement électrique du nord-ouest de l'Iran.", source: "Tavanir", date: "2026-02-05", puissance: "1500 MW" },
+        { nom: "Centrale Thermique de Zarand (Kerman)", lat: 30.8000, lon: 56.5700, type: "Électrique", statut: "Opérationnel", desc: "Centrale à charbon de 600 MW. Unique centrale à charbon du pays.", source: "MEO", date: "2026-01-28", puissance: "600 MW" },
+        { nom: "Centrale Hydroélectrique de Karun-3 (Khuzestan)", lat: 31.8000, lon: 50.1200, type: "Électrique", statut: "Opérationnel", desc: "Barrage hydroélectrique de 2280 MW. Infrastructure clé pour la production hydraulique.", source: "Iran Water & Power", date: "2026-02-12", puissance: "2280 MW" },
+        { nom: "Centrale Hydroélectrique de Karun-4 (Chaharmahal)", lat: 31.6000, lon: 50.4700, type: "Électrique", statut: "Opérationnel", desc: "Barrage hydroélectrique de 1020 MW. Production d'énergie propre pour la région sud.", source: "Iran Water & Power", date: "2026-02-08", puissance: "1020 MW" },
+        { nom: "Centrale Solaire de Yazd (Shahid Sadoughi)", lat: 31.8900, lon: 54.3700, type: "Électrique", statut: "Opérationnel", desc: "Parc solaire photovoltaïque de 10 MW. Démonstration des énergies renouvelables.", source: "SATBA", date: "2026-02-14", puissance: "10 MW" }
+    ];
+
     const TIMELINE_EVENTS = [
         { date: "2025-06-15", event: "Frappes US/Israël sur sites nucléaires (12 jours)", type: "attaque" },
         { date: "2025-07-01", event: "Iran suspend coopération AIEA", type: "diplomatie" },
@@ -483,11 +517,12 @@
         { date: "2026-02-09", event: "Trois entrées tunnels Isfahan rebouchées", type: "fortification" },
         { date: "2026-02-16", event: "Site Parchin complètement dissimulé", type: "dissimulation" },
         { date: "2026-02-27", event: "Nouveau rapport AIEA - Stock 60% non vérifiable", type: "rapport" },
-        { date: "2026-02-28", event: "Nouvelles frappes signalées (non confirmées)", type: "attaque" }
+        { date: "2026-02-28", event: "Nouvelles frappes signalées (non confirmées)", type: "attaque" },
+        { date: "2026-03-01", event: "Cyberattaque sur réseau électrique - Centrale Shahid Rajaee touchée", type: "attaque" }
     ];
 
     // Fusion des données
-    let allSites = [...NUCLEAR_SITES, ...MILITARY_SITES];
+    let allSites = [...NUCLEAR_SITES, ...MILITARY_SITES, ...POWER_PLANTS];
     let map;
     let markers = {};
     let activeFilter = 'all';
@@ -516,7 +551,6 @@
 
     // --- CARTE ---
     function initMap() {
-        // CartoDB Dark Matter tiles pour le look futuriste
         map = L.map('map', {
             zoomControl: false,
             attributionControl: false
@@ -526,7 +560,6 @@
             maxZoom: 19
         }).addTo(map);
 
-        // Déplacer les contrôles de zoom en haut à droite
         L.control.zoom({
             position: 'topright'
         }).addTo(map);
@@ -537,6 +570,7 @@
     function getIconClass(type) {
         if (type === 'Nucléaire') return 'nuclear';
         if (type === 'Militaire') return 'military';
+        if (type === 'Électrique') return 'powerplant';
         return '';
     }
 
@@ -583,12 +617,13 @@
         sites.forEach(site => {
             const div = document.createElement('div');
             div.className = 'site-item';
-            div.id = `item-${site.nom.replace(/\s+/g, '-')}`;
+            div.id = `item-${site.nom.replace(/\s+/g, '-').replace(/[()]/g, '')}`;
             
             // Couleur du point de statut
             let statusColor = '#00f3ff';
             if(site.statut === 'Endommagé' || site.statut === 'Dissimulé') statusColor = '#ff2a2a';
             if(site.statut === 'Construction' || site.statut === 'Reconstruction') statusColor = '#ff9d00';
+            if(site.type === 'Électrique' && site.statut === 'Opérationnel') statusColor = '#00ff88';
 
             div.innerHTML = `
                 <span class="site-name">
@@ -596,6 +631,7 @@
                     ${site.nom}
                 </span>
                 <span class="site-coords">${site.lat.toFixed(4)}°N, ${site.lon.toFixed(4)}°E</span>
+                <span class="site-coords" style="color:#88aadd;">${site.type}</span>
             `;
 
             div.addEventListener('click', () => selectSite(site.nom));
@@ -632,7 +668,7 @@
 
         // Mettre en surbrillance dans la liste
         document.querySelectorAll('.site-item').forEach(el => el.classList.remove('active'));
-        const item = document.getElementById(`item-${siteName.replace(/\s+/g, '-')}`);
+        const item = document.getElementById(`item-${site.nom.replace(/\s+/g, '-').replace(/[()]/g, '')}`);
         if(item) item.classList.add('active');
 
         // Centrer la carte
@@ -652,6 +688,24 @@
                     Activité suspecte ou site dégradé confirmé par imagerie satellite.
                 </div>
             `;
+        } else if (site.type === 'Électrique' && site.statut === 'Opérationnel') {
+            alertHTML = `
+                <div class="info-box">
+                    <span class="info-title">⚡ INFRASTRUCTURE CRITIQUE</span>
+                    Centrale électrique en fonctionnement normal. Surveillance en cours.
+                </div>
+            `;
+        }
+
+        // Ajouter la puissance pour les centrales électriques
+        let puissanceHTML = '';
+        if (site.puissance) {
+            puissanceHTML = `
+                <div class="data-row">
+                    <span class="data-label">PUISSANCE:</span>
+                    <span class="data-value" style="color:var(--alert-green)">${site.puissance}</span>
+                </div>
+            `;
         }
 
         intelPanel.innerHTML = `
@@ -659,12 +713,13 @@
             
             <div class="data-row">
                 <span class="data-label">TYPE:</span>
-                <span class="data-value" style="color:var(--neon-blue)">${site.type.toUpperCase()}</span>
+                <span class="data-value" style="color:${site.type === 'Électrique' ? '#00ff88' : (site.type === 'Nucléaire' ? '#ff2a2a' : '#ff9d00')}">${site.type.toUpperCase()}</span>
             </div>
             <div class="data-row">
                 <span class="data-label">STATUT:</span>
-                <span class="data-value" style="color:${site.statut === 'Actif' ? '#00f3ff' : '#ff9d00'}">${site.statut.toUpperCase()}</span>
+                <span class="data-value" style="color:${site.statut === 'Opérationnel' ? '#00ff88' : (site.statut === 'Endommagé' ? '#ff2a2a' : '#ff9d00')}">${site.statut.toUpperCase()}</span>
             </div>
+            ${puissanceHTML}
             <div class="data-row">
                 <span class="data-label">LATITUDE:</span>
                 <span class="data-value">${site.lat.toFixed(6)}°</span>
@@ -696,6 +751,7 @@
     // --- TIMELINE ---
     function renderTimeline() {
         const container = document.getElementById('timeline-container');
+        container.innerHTML = '';
         TIMELINE_EVENTS.forEach(ev => {
             const div = document.createElement('div');
             div.className = 'timeline-item';
@@ -703,6 +759,9 @@
             let color = '#00f3ff';
             if(ev.type === 'attaque') color = '#ff2a2a';
             if(ev.type === 'construction') color = '#ff9d00';
+            if(ev.type === 'dissimulation') color = '#ff9d00';
+            if(ev.type === 'rapport') color = '#00f3ff';
+            if(ev.type === 'fortification') color = '#ff9d00';
 
             div.innerHTML = `
                 <div class="timeline-date" style="color:${color}">${ev.date}</div>
